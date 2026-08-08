@@ -17,6 +17,11 @@ typedef void* (*ClassGetMethods_t)(void* klass, void** iter);
 typedef const char* (*il2cpp_class_get_name_t)(void* klass);
 typedef const char* (*il2cpp_class_get_namespace_t)(void* klass);
 typedef const char* (*il2cpp_method_get_name_t)(void* method);
+typedef const char* (*il2cpp_type_get_name_t)(void* type);
+typedef void* (*il2cpp_method_get_return_type_t)(void* method);
+typedef uint32_t (*il2cpp_method_get_param_count_t)(void* method);
+typedef const char* (*il2cpp_method_get_param_name_t)(void* method, uint32_t index);
+typedef void* (*il2cpp_method_get_param_t)(void* method, uint32_t index);
 
 void showNativeAlert(NSString *title, NSString *message) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -111,6 +116,11 @@ void ExecuteIl2CppDump() {
         il2cpp_class_get_name_t f_ClassName = (il2cpp_class_get_name_t)dlsym(Globals.m_GameFramework, "il2cpp_class_get_name");
         il2cpp_class_get_namespace_t f_ClassNamespace = (il2cpp_class_get_namespace_t)dlsym(Globals.m_GameFramework, "il2cpp_class_get_namespace");
         il2cpp_method_get_name_t f_MethodName = (il2cpp_method_get_name_t)dlsym(Globals.m_GameFramework, "il2cpp_method_get_name");
+        il2cpp_type_get_name_t f_TypeName = (il2cpp_type_get_name_t)dlsym(Globals.m_GameFramework, "il2cpp_type_get_name");
+        il2cpp_method_get_return_type_t f_MethodReturnType = (il2cpp_method_get_return_type_t)dlsym(Globals.m_GameFramework, "il2cpp_method_get_return_type");
+        il2cpp_method_get_param_count_t f_MethodParamCount = (il2cpp_method_get_param_count_t)dlsym(Globals.m_GameFramework, "il2cpp_method_get_param_count");
+        il2cpp_method_get_param_name_t f_MethodParamName = (il2cpp_method_get_param_name_t)dlsym(Globals.m_GameFramework, "il2cpp_method_get_param_name");
+        il2cpp_method_get_param_t f_MethodParam = (il2cpp_method_get_param_t)dlsym(Globals.m_GameFramework, "il2cpp_method_get_param");
 
         if (!f_DomainGet || !f_DomainGetAssemblies) {
             dumpFile.close();
@@ -157,9 +167,7 @@ void ExecuteIl2CppDump() {
             int classCount = f_ImageGetClassCount ? f_ImageGetClassCount(image) : 0;
             totalClasses += classCount;
 
-            dumpFile << "\n========================================\n";
-            dumpFile << "[Assembly: " << (imageName ? imageName : "Unknown") << "]\n";
-            dumpFile << "========================================\n";
+            dumpFile << "// Image: " << (imageName ? imageName : "Unknown") << "\n";
 
             for (int j = 0; j < classCount; ++j) {
                 void* klass = f_ImageGetClass ? f_ImageGetClass(image, j) : nullptr;
@@ -168,7 +176,9 @@ void ExecuteIl2CppDump() {
                 const char* className = f_ClassName ? f_ClassName(klass) : "Unknown";
                 const char* classNamespace = f_ClassNamespace ? f_ClassNamespace(klass) : "";
                 
-                dumpFile << "\n  Class: " << (classNamespace && classNamespace[0] ? classNamespace : "") << "." << (className ? className : "Unknown") << "\n";
+                dumpFile << "\npublic class " << (classNamespace && classNamespace[0] ? classNamespace : "") 
+                         << (classNamespace && classNamespace[0] ? "." : "") << (className ? className : "Unknown") 
+                         << " // TypeDefIndex: " << j << "\n{\n";
 
                 void* iter = nullptr;
                 while (void* method = f_ClassGetMethods ? f_ClassGetMethods(klass, &iter) : nullptr) {
@@ -194,10 +204,38 @@ void ExecuteIl2CppDump() {
                         relativeOffset = methodPointer - baseAddress;
                     }
 
-                    dumpFile << "    - Method: " << (methodName ? methodName : "Unknown") 
-                             << " | Addr: 0x" << std::hex << methodPointer 
-                             << " | Offset: 0x" << relativeOffset << std::dec << "\n";
+                    // Dönüş tipi (Return Type) tespiti
+                    const char* returnTypeName = "void";
+                    if (f_MethodReturnType && f_TypeName) {
+                        void* retTypeObj = f_MethodReturnType(method);
+                        if (retTypeObj) {
+                            const char* tName = f_TypeName(retTypeObj);
+                            if (tName) returnTypeName = tName;
+                        }
+                    }
+
+                    // Parametre sayısı ve tiplerini oluşturma
+                    std::string paramList = "";
+                    if (f_MethodParamCount && f_MethodParam && f_TypeName && f_MethodParamName) {
+                        uint32_t paramCount = f_MethodParamCount(method);
+                        for (uint32_t p = 0; p < paramCount; ++p) {
+                            void* paramType = f_MethodParam(method, p);
+                            const char* pTypeName = paramType ? f_TypeName(paramType) : "object";
+                            const char* pName = f_MethodParamName(method, p);
+                            
+                            if (p > 0) paramList += ", ";
+                            paramList += std::string(pTypeName ? pTypeName : "object") + " " + std::string(pName ? pName : "p" + std::to_string(p));
+                        }
+                    }
+
+                    // İstediğiniz C# stilinde RVA, Offset, VA ve gerçek metod imzası
+                    dumpFile << "    // RVA: 0x" << std::hex << relativeOffset 
+                             << " Offset: 0x" << relativeOffset 
+                             << " VA: 0x" << methodPointer << std::dec << "\n";
+                    dumpFile << "    public " << returnTypeName << " " << (methodName ? methodName : "Unknown") << "(" << paramList << ") { }\n\n";
                 }
+                
+                dumpFile << "}\n\n";
             }
         }
 
