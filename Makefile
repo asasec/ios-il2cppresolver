@@ -5,7 +5,7 @@ include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = Il2CppDumpMenu
 
-Il2CppDumpMenu_FILES = main.mm helper/Dumpil2cpp.mm
+Il2CppDumpMenu_FILES = main.mm
 Il2CppDumpMenu_CFLAGS = -fobjc-arc -std=c++17 -Wno-error=vla-cxx-extension -Wno-error=deprecated-declarations
 Il2CppDumpMenu_CCFLAGS = -std=c++17 -stdlib=libc++ -Wno-error=vla-cxx-extension -Wno-error=deprecated-declarations
 Il2CppDumpMenu_FRAMEWORKS = UIKit Foundation
