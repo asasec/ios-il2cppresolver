@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 #include "IL2CPP_Resolver.hpp"
 #import "helper/Menu.h"
+#import "helper/Dumpil2cpp.mm"
 
 // Dump.mm içerisindeki uyarı fonksiyonu referansı
 extern void showNativeAlert(NSString *title, NSString *message);
