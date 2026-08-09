@@ -93,7 +93,7 @@ void ExecuteIl2CppDump() {
 
         NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
         NSString *documentsDirectory = [paths firstObject];
-        NSString *filePath = [documentsDirectory stringByAppendingPathComponent:@"il2cpp_dump.txt"];
+        NSString *filePath = [documentsDirectory stringByAppendingPathComponent:@"AsasecDump.cs"];
         
         std::ofstream dumpFile([filePath UTF8String], std::ios::out | std::ios::trunc);
         if (!dumpFile.is_open()) {
@@ -243,8 +243,8 @@ void ExecuteIl2CppDump() {
         dumpFile.close();
 
         dispatch_async(dispatch_get_main_queue(), ^{
-            UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Oldu (Dump Başarılı)"
-                                                                            message:[NSString stringWithFormat:@"Sınıf: %d | Metot: %d\nDosya Documents dizinine oluşturuldu.", totalClasses, totalMethods]
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"@asasec-mod"
+                                                                            message:[NSString stringWithFormat:@"Dump Başarılı\nSınıf: %d | Metot: %d\nDosya Documents dizinine oluşturuldu.", totalClasses, totalMethods]
                                                                      preferredStyle:UIAlertControllerStyleAlert];
             
             [alert addAction:[UIAlertAction actionWithTitle:@"Dosyalara Kaydet" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
