@@ -53,6 +53,10 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/output"
           find . -name "*.dylib" -exec cp {} "$GITHUB_WORKSPACE/output/" \;
           find . -name "*.deb" -exec cp {} "$GITHUB_WORKSPACE/output/" \;
+          mv "$GITHUB_WORKSPACE/output/*.dylib" "$GITHUB_WORKSPACE/output/İl2cppDumper-asasec.dylib"
+          mv "$GITHUB_WORKSPACE/output/*.deb" "$GITHUB_WORKSPACE/output/İl2cppDumper_İmgui_2.0.0-@asasec.deb"
+          #Bunu isterseniz kapatın ama sadece deb dosyası işe yarar.
+          rm -rf "$GITHUB_WORKSPACE/output/*.dylib"
         else
           echo "Makefile bulunamadı!"
           exit 1
@@ -61,5 +65,5 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: iOS-Mod-Menu-Output
+        name: İl2cppDumper_İmgui-@asasec
         path: output/
