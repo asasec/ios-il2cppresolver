@@ -103,7 +103,7 @@ void ExecuteIl2CppDump() {
             return;
         }
 
-        dumpFile << "=== IL2CPP Class, Method & Offset Dump ===\n\n";
+        dumpFile << "=== @asasec IL2CPP Class, Method & Offset Dumped ===\n\n";
 
         DomainGet_t f_DomainGet = (DomainGet_t)Functions.m_DomainGet;
         DomainGetAssemblies_t f_DomainGetAssemblies = (DomainGetAssemblies_t)Functions.m_DomainGetAssemblies;
@@ -247,11 +247,11 @@ void ExecuteIl2CppDump() {
                                                                             message:[NSString stringWithFormat:@"Dump Başarılı\nSınıf: %d | Metot: %d\nDosya Documents dizinine oluşturuldu.", totalClasses, totalMethods]
                                                                      preferredStyle:UIAlertControllerStyleAlert];
             
-            [alert addAction:[UIAlertAction actionWithTitle:@"Dosyalara Kaydet" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            [alert addAction:[UIAlertAction actionWithTitle:@"💾" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
                 shareDumpFile(filePath);
             }]];
             
-            [alert addAction:[UIAlertAction actionWithTitle:@"Kapat" style:UIAlertActionStyleCancel handler:nil]];
+            [alert addAction:[UIAlertAction actionWithTitle:@"❌" style:UIAlertActionStyleCancel handler:nil]];
             
             UIWindow *window = nil;
             if (@available(iOS 13.0, *)) {
