@@ -60,7 +60,7 @@ void showNativeAlert(NSString *title, NSString *message);
         self.dumpButton = [UIButton buttonWithType:UIButtonTypeSystem];
         self.dumpButton.frame = CGRectMake(18, 56, 234, 38);
         self.dumpButton.backgroundColor = [UIColor colorWithRed:0.20 green:0.60 blue:1.00 alpha:1.0];
-        [self.dumpButton setTitle:@"🚀" forState:UIControlStateNormal];
+        [self.dumpButton setTitle:@"▶" forState:UIControlStateNormal];
         [self.dumpButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
         self.dumpButton.titleLabel.font = [UIFont boldSystemFontOfSize:14];
         self.dumpButton.layer.cornerRadius = 8.0;
