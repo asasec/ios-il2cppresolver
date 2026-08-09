@@ -49,14 +49,27 @@ jobs:
           
           make package FINALPACKAGE=1 TARGET=iphone:clang:$LATEST_SDK:14.0 || make FINALPACKAGE=1 TARGET=iphone:clang:$LATEST_SDK:14.0 || make
           
-          # Çıkan gizli .dylib ve .deb dosyalarını dışarıya kopyala
+                    # Çıkan .dylib ve .deb dosyalarını dışarıya kopyala ve yeniden adlandır
           mkdir -p "$GITHUB_WORKSPACE/output"
+          
           find . -name "*.dylib" -exec cp {} "$GITHUB_WORKSPACE/output/" \;
           find . -name "*.deb" -exec cp {} "$GITHUB_WORKSPACE/output/" \;
-          mv "$GITHUB_WORKSPACE/output/*.dylib" "$GITHUB_WORKSPACE/output/İl2cppDumper-asasec.dylib"
-          mv "$GITHUB_WORKSPACE/output/*.deb" "$GITHUB_WORKSPACE/output/İl2cppDumper_İmgui_2.0.0-@asasec.deb"
-          #Bunu isterseniz kapatın ama sadece deb dosyası işe yarar.
-          rm -rf "$GITHUB_WORKSPACE/output/*.dylib"
+
+          # .dylib dosyasını güvenli bir şekilde yeniden adlandır
+          for file in "$GITHUB_WORKSPACE/output/"*.dylib; do
+            [ -e "$file" ] && mv "$file" "$GITHUB_WORKSPACE/output/İl2cppDumper-asasec.dylib"
+            break
+          done
+
+          # .deb dosyasını güvenli bir şekilde yeniden adlandır
+          for file in "$GITHUB_WORKSPACE/output/"*.deb; do
+            [ -e "$file" ] && mv "$file" "$GITHUB_WORKSPACE/output/İl2cppDumper_İmgui_2.0.0-@asasec.deb"
+            break
+          done
+
+          # İsteğe bağlı olarak .dylib dosyasını temizle
+          rm -f "$GITHUB_WORKSPACE/output/*.dylib"
+
         else
           echo "Makefile bulunamadı!"
           exit 1
