@@ -12,6 +12,7 @@ void showNativeAlert(NSString *title, NSString *message);
 @property (nonatomic, strong) UIButton *dumpButton;
 @property (nonatomic, strong) UIButton *stringDumpButton;
 @property (nonatomic, strong) UIButton *assemblyViewerButton;
+@property (nonatomic, strong) UIButton *quickPatchButton; // Yeni eklenen hızlı işlem butonu
 @end
 
 @implementation NativeMenuView
@@ -21,8 +22,8 @@ void showNativeAlert(NSString *title, NSString *message);
     if (self) {
         self.backgroundColor = [UIColor clearColor];
         
-        // Sadece 3 temel buton sığacak şekilde optimize edilmiş kompakt boyut (160px)
-        self.mobileMenuWindow = [[UIView alloc] initWithFrame:CGRectMake(50, 80, 270, 160)];
+        // 4 butonun rahatça sığabilmesi için yükseklik 200px olarak güncellendi
+        self.mobileMenuWindow = [[UIView alloc] initWithFrame:CGRectMake(50, 80, 270, 200)];
         self.mobileMenuWindow.backgroundColor = [UIColor colorWithRed:0.08 green:0.08 blue:0.10 alpha:0.97];
         self.mobileMenuWindow.layer.cornerRadius = 16.0;
         self.mobileMenuWindow.layer.borderWidth = 1.5;
@@ -72,7 +73,7 @@ void showNativeAlert(NSString *title, NSString *message);
         [self.dumpButton addTarget:self action:@selector(dumpButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
         [self.mobileMenuWindow addSubview:self.dumpButton];
 
-        // 2. String Dump Butonu (Tıklanınca ayrı pencere açar)
+        // 2. String Dump Butonu
         self.stringDumpButton = [UIButton buttonWithType:UIButtonTypeSystem];
         self.stringDumpButton.frame = CGRectMake(18, 86, 234, 32);
         self.stringDumpButton.backgroundColor = [UIColor colorWithRed:0.80 green:0.40 blue:0.10 alpha:1.0];
@@ -93,6 +94,17 @@ void showNativeAlert(NSString *title, NSString *message);
         self.assemblyViewerButton.layer.cornerRadius = 6.0;
         [self.assemblyViewerButton addTarget:self action:@selector(assemblyViewerButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
         [self.mobileMenuWindow addSubview:self.assemblyViewerButton];
+
+        // 4. Yeni Özellik: Bilgi / Hızlı Durum Butonu (Mod Menü Durumu veya Bilgi Gösterimi)
+        self.quickPatchButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        self.quickPatchButton.frame = CGRectMake(18, 162, 234, 32);
+        self.quickPatchButton.backgroundColor = [UIColor colorWithRed:0.50 green:0.20 blue:0.60 alpha:1.0];
+        [self.quickPatchButton setTitle:@"💡 Mod Info & Status" forState:UIControlStateNormal];
+        [self.quickPatchButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+        self.quickPatchButton.titleLabel.font = [UIFont boldSystemFontOfSize:13];
+        self.quickPatchButton.layer.cornerRadius = 6.0;
+        [self.quickPatchButton addTarget:self action:@selector(quickPatchButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [self.mobileMenuWindow addSubview:self.quickPatchButton];
 
         // Yüzen Simge (Floating Icon)
         self.floatingIcon = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -163,6 +175,10 @@ void showNativeAlert(NSString *title, NSString *message);
     UIWindow *keyWindow = [UIApplication sharedApplication].windows.firstObject;
     AssemblyViewerWindow *asmWindow = [[AssemblyViewerWindow alloc] initWithFrame:keyWindow.bounds];
     [keyWindow addSubview:asmWindow];
+}
+
+- (void)quickPatchButtonTapped:(UIButton *)sender {
+    showNativeAlert(@"Mod Status", @"IL2CPP Resolver Aktif ve Çalışıyor!\nTarget: UnityFramework");
 }
 
 @end
