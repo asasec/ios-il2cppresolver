@@ -39,9 +39,11 @@ __attribute__((constructor)) void initializeDumpMenu() {
         }
         
         if (window) {
-            ImGuiStyleMenuView *menuView = [[ImGuiStyleMenuView alloc] initWithFrame:window.bounds];
+            // Eski isim yerine güncel sınıf adını kullanıyoruz
+            NativeMenuView *menuView = [[NativeMenuView alloc] initWithFrame:window.bounds];
             menuView.userInteractionEnabled = YES;
             [window addSubview:menuView];
         }
     });
 }
+
