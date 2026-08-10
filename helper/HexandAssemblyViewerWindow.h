@@ -98,6 +98,17 @@
         return [NSString stringWithFormat:@"bl\t0x%llx", addr + (imm26 << 2)];
     }
 
+    // ADRP (Form PC-relative address)
+    if ((insn & 0x9F000000) == 0x90000000) {
+        uint32_t rd = insn & 0x1F;
+        uint32_t immlo = (insn >> 29) & 0x3;
+        uint32_t immhi = (insn >> 5) & 0x7FFFF;
+        int32_t imm = (immhi << 2) | immlo;
+        if (imm & 0x100000) imm |= 0xFFE00000; // sign extend
+        uint64_t page = (addr & ~0xFFFULL) + ((int64_t)imm << 12);
+        return [NSString stringWithFormat:@"adrp\tx%u, 0x%llx", rd, page];
+    }
+
     // STP (Store Pair)
     if ((insn & 0x7C000000) == 0x29000000 || (insn & 0x7C000000) == 0xA9000000) {
         BOOL is64 = (insn & 0x80000000) != 0;
@@ -116,6 +127,14 @@
         return [NSString stringWithFormat:@"ldp\t%@%u, %@%u, [sp, ...]", rPrefix, rt, rPrefix, rt2];
     }
 
+    // LDR (Immediate / Literal / Register genel maske)
+    if ((insn & 0x3F000000) == 0x39000000 || (insn & 0x3F000000) == 0xB9000000 || (insn & 0x3F000000) == 0xF9000000) {
+        BOOL isStore = (insn & 0x04000000) != 0;
+        uint32_t rt = insn & 0x1F;
+        uint32_t rn = (insn >> 5) & 0x1F;
+        return [NSString stringWithFormat:@"%@\tx%u, [x%u, ...]", isStore ? @"str" : @"ldr", rt, rn];
+    }
+
     // ADD / SUB (Immediate)
     if ((insn & 0x7FE00000) == 0x11000000 || (insn & 0x7FE00000) == 0x51000000) {
         uint32_t rd = insn & 0x1F;
@@ -132,6 +151,16 @@
         uint32_t imm16 = (insn >> 5) & 0xFFFF;
         NSString *regPrefix = (sf == 1) ? @"x" : @"w";
         return [NSString stringWithFormat:@"mov\t%@%u, #0x%X", regPrefix, rd, imm16];
+    }
+
+    // CBZ / CBNZ (Conditional Branch)
+    if ((insn & 0x7E000000) == 0x34000000) {
+        BOOL isNez = (insn & 0x01000000) != 0;
+        uint32_t rt = insn & 0x1F;
+        int32_t imm19 = (int32_t)((insn >> 5) & 0x7FFFF);
+        if (imm19 & 0x40000) imm19 |= 0xFFF80000;
+        uint64_t target = addr + (imm19 << 2);
+        return [NSString stringWithFormat:@"%@\tx%u, 0x%llx", isNez ? @"cbnz" : @"cbz", rt, target];
     }
 
     return [NSString stringWithFormat:@".long\t0x%08X", insn];
