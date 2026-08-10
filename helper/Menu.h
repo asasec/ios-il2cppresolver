@@ -1,6 +1,6 @@
 #import <UIKit/UIKit.h>
 #import <thread>
-#import "AssemblyViewerWindow.h"
+#import "HexandAssemblyViewerWindow.h"
 #import "StringDumpWindow.h"
 
 void ExecuteIl2CppDump(void);
@@ -87,7 +87,7 @@ void showNativeAlert(NSString *title, NSString *message);
         self.assemblyViewerButton = [UIButton buttonWithType:UIButtonTypeSystem];
         self.assemblyViewerButton.frame = CGRectMake(18, 124, 234, 32);
         self.assemblyViewerButton.backgroundColor = [UIColor colorWithRed:0.30 green:0.50 blue:0.30 alpha:1.0];
-        [self.assemblyViewerButton setTitle:@"⚙️ Assembly Viewer" forState:UIControlStateNormal];
+        [self.assemblyViewerButton setTitle:@"⚙️ Hex & Assembly Viewer" forState:UIControlStateNormal];
         [self.assemblyViewerButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
         self.assemblyViewerButton.titleLabel.font = [UIFont boldSystemFontOfSize:13];
         self.assemblyViewerButton.layer.cornerRadius = 6.0;
