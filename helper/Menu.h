@@ -1,23 +1,17 @@
 #import <UIKit/UIKit.h>
 #import <thread>
 #import "AssemblyViewerWindow.h"
+#import "StringDumpWindow.h"
 
 void ExecuteIl2CppDump(void);
-void ExecuteIl2CppStringDump(NSString *searchString);
 void showNativeAlert(NSString *title, NSString *message);
 
-@interface NativeMenuView : UIView <UITextFieldDelegate>
+@interface NativeMenuView : UIView
 @property (nonatomic, strong) UIView *mobileMenuWindow;
 @property (nonatomic, strong) UIButton *floatingIcon;
 @property (nonatomic, strong) UIButton *dumpButton;
 @property (nonatomic, strong) UIButton *stringDumpButton;
 @property (nonatomic, strong) UIButton *assemblyViewerButton;
-
-// Ayrı bir String Dump alt penceresi için view ve elemanlar
-@property (nonatomic, strong) UIView *stringPopupView;
-@property (nonatomic, strong) UITextField *searchTextField;
-@property (nonatomic, strong) UIButton *confirmStringDumpButton;
-@property (nonatomic, strong) UIButton *cancelStringDumpButton;
 @end
 
 @implementation NativeMenuView
@@ -27,7 +21,7 @@ void showNativeAlert(NSString *title, NSString *message);
     if (self) {
         self.backgroundColor = [UIColor clearColor];
         
-        // Ana menü boyutu (Başlangıçta kompakt: Full Dump, String Dump, Assembly Viewer)
+        // Sadece 3 temel buton sığacak şekilde optimize edilmiş kompakt boyut (160px)
         self.mobileMenuWindow = [[UIView alloc] initWithFrame:CGRectMake(50, 80, 270, 160)];
         self.mobileMenuWindow.backgroundColor = [UIColor colorWithRed:0.08 green:0.08 blue:0.10 alpha:0.97];
         self.mobileMenuWindow.layer.cornerRadius = 16.0;
@@ -78,7 +72,7 @@ void showNativeAlert(NSString *title, NSString *message);
         [self.dumpButton addTarget:self action:@selector(dumpButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
         [self.mobileMenuWindow addSubview:self.dumpButton];
 
-        // 2. String Dump Butonu (Tıklanınca alt kısımda input alanı açılacak)
+        // 2. String Dump Butonu (Tıklanınca ayrı pencere açar)
         self.stringDumpButton = [UIButton buttonWithType:UIButtonTypeSystem];
         self.stringDumpButton.frame = CGRectMake(18, 86, 234, 32);
         self.stringDumpButton.backgroundColor = [UIColor colorWithRed:0.80 green:0.40 blue:0.10 alpha:1.0];
@@ -99,45 +93,6 @@ void showNativeAlert(NSString *title, NSString *message);
         self.assemblyViewerButton.layer.cornerRadius = 6.0;
         [self.assemblyViewerButton addTarget:self action:@selector(assemblyViewerButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
         [self.mobileMenuWindow addSubview:self.assemblyViewerButton];
-
-        // --- String Dump Tıklanınca Açılacak Alt Panel (Gizli Başlar) ---
-        self.stringPopupView = [[UIView alloc] initWithFrame:CGRectMake(18, 86, 234, 75)];
-        self.stringPopupView.backgroundColor = [UIColor colorWithRed:0.12 green:0.12 blue:0.15 alpha:1.0];
-        self.stringPopupView.layer.cornerRadius = 8.0;
-        self.stringPopupView.hidden = YES;
-        [self.mobileMenuWindow addSubview:self.stringPopupView];
-
-        self.searchTextField = [[UITextField alloc] initWithFrame:CGRectMake(8, 8, 218, 26)];
-        self.searchTextField.backgroundColor = [UIColor colorWithRed:0.18 green:0.18 blue:0.22 alpha:1.0];
-        self.searchTextField.textColor = [UIColor whiteColor];
-        self.searchTextField.font = [UIFont systemFontOfSize:11];
-        self.searchTextField.layer.cornerRadius = 4.0;
-        self.searchTextField.leftView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 6, 26)];
-        self.searchTextField.leftViewMode = UITextFieldViewModeAlways;
-        self.searchTextField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:@"Kelime girin (örn: coin)" attributes:@{NSForegroundColorAttributeName: [UIColor colorWithRed:0.6 green:0.6 blue:0.6 alpha:1.0]}];
-        self.searchTextField.delegate = self;
-        [self.stringPopupView addSubview:self.searchTextField];
-
-        self.confirmStringDumpButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.confirmStringDumpButton.frame = CGRectMake(8, 40, 105, 26);
-        self.confirmStringDumpButton.backgroundColor = [UIColor colorWithRed:0.20 green:0.60 blue:0.20 alpha:1.0];
-        [self.confirmStringDumpButton setTitle:@"Dump Et" forState:UIControlStateNormal];
-        [self.confirmStringDumpButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-        self.confirmStringDumpButton.titleLabel.font = [UIFont boldSystemFontOfSize:11];
-        self.confirmStringDumpButton.layer.cornerRadius = 4.0;
-        [self.confirmStringDumpButton addTarget:self action:@selector(confirmStringDumpTapped) forControlEvents:UIControlEventTouchUpInside];
-        [self.stringPopupView addSubview:self.confirmStringDumpButton];
-
-        self.cancelStringDumpButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.cancelStringDumpButton.frame = CGRectMake(121, 40, 105, 26);
-        self.cancelStringDumpButton.backgroundColor = [UIColor colorWithRed:0.60 green:0.20 blue:0.20 alpha:1.0];
-        [self.cancelStringDumpButton setTitle:@"İptal" forState:UIControlStateNormal];
-        [self.cancelStringDumpButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-        self.cancelStringDumpButton.titleLabel.font = [UIFont boldSystemFontOfSize:11];
-        self.cancelStringDumpButton.layer.cornerRadius = 4.0;
-        [self.cancelStringDumpButton addTarget:self action:@selector(cancelStringDumpTapped) forControlEvents:UIControlEventTouchUpInside];
-        [self.stringPopupView addSubview:self.cancelStringDumpButton];
-        // -------------------------------------------------------------
 
         // Yüzen Simge (Floating Icon)
         self.floatingIcon = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -199,36 +154,15 @@ void showNativeAlert(NSString *title, NSString *message);
 }
 
 - (void)stringDumpButtonTapped:(UIButton *)sender {
-    // Butona basıldığında arama panelini göster, diğer butonları gizle/ört
-    self.stringPopupView.hidden = NO;
-    self.searchTextField.text = @"";
-    [self.searchTextField becomeFirstResponder]; // Klavyeyi otomatik aç
-}
-
-- (void)confirmStringDumpTapped {
-    [self.searchTextField resignFirstResponder];
-    self.stringPopupView.hidden = YES;
-    
-    NSString *query = self.searchTextField.text;
-    std::thread([query]() {
-        ExecuteIl2CppStringDump(query);
-    }).detach();
-}
-
-- (void)cancelStringDumpTapped {
-    [self.searchTextField resignFirstResponder];
-    self.stringPopupView.hidden = YES;
+    UIWindow *keyWindow = [UIApplication sharedApplication].windows.firstObject;
+    StringDumpWindow *stringWindow = [[StringDumpWindow alloc] initWithFrame:keyWindow.bounds];
+    [keyWindow addSubview:stringWindow];
 }
 
 - (void)assemblyViewerButtonTapped:(UIButton *)sender {
     UIWindow *keyWindow = [UIApplication sharedApplication].windows.firstObject;
     AssemblyViewerWindow *asmWindow = [[AssemblyViewerWindow alloc] initWithFrame:keyWindow.bounds];
     [keyWindow addSubview:asmWindow];
-}
-
-- (BOOL)textFieldShouldReturn:(UITextField *)textField {
-    [textField resignFirstResponder];
-    return YES;
 }
 
 @end
