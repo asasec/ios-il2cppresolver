@@ -84,22 +84,48 @@
 - (NSString *)disassembleARM64Instruction:(uint32_t)insn address:(uint64_t)addr {
     if (insn == 0xD65F03C0) return @"ret";
     if (insn == 0xD503201F) return @"nop";
-    
     if ((insn & 0xFFFFFC1F) == 0xD65F0000) return @"ret";
 
+    // Branch (b / bl)
     if ((insn & 0xFC000000) == 0x14000000) {
         int32_t imm26 = (insn & 0x03FFFFFF);
         if (imm26 & 0x02000000) imm26 |= 0xFC000000;
-        uint64_t target = addr + (imm26 << 2);
-        return [NSString stringWithFormat:@"b\t0x%llx", target];
+        return [NSString stringWithFormat:@"b\t0x%llx", addr + (imm26 << 2)];
     }
     if ((insn & 0xFC000000) == 0x94000000) {
         int32_t imm26 = (insn & 0x03FFFFFF);
         if (imm26 & 0x02000000) imm26 |= 0xFC000000;
-        uint64_t target = addr + (imm26 << 2);
-        return [NSString stringWithFormat:@"bl\t0x%llx", target];
+        return [NSString stringWithFormat:@"bl\t0x%llx", addr + (imm26 << 2)];
     }
 
+    // STP (Store Pair)
+    if ((insn & 0x7C000000) == 0x29000000 || (insn & 0x7C000000) == 0xA9000000) {
+        BOOL is64 = (insn & 0x80000000) != 0;
+        uint32_t rt2 = (insn >> 10) & 0x1F;
+        uint32_t rt = insn & 0x1F;
+        NSString *rPrefix = is64 ? @"x" : @"w";
+        return [NSString stringWithFormat:@"stp\t%@%u, %@%u, [sp, ...]", rPrefix, rt, rPrefix, rt2];
+    }
+
+    // LDP (Load Pair)
+    if ((insn & 0x7C000000) == 0x28000000 || (insn & 0x7C000000) == 0xA8000000) {
+        BOOL is64 = (insn & 0x80000000) != 0;
+        uint32_t rt2 = (insn >> 10) & 0x1F;
+        uint32_t rt = insn & 0x1F;
+        NSString *rPrefix = is64 ? @"x" : @"w";
+        return [NSString stringWithFormat:@"ldp\t%@%u, %@%u, [sp, ...]", rPrefix, rt, rPrefix, rt2];
+    }
+
+    // ADD / SUB (Immediate)
+    if ((insn & 0x7FE00000) == 0x11000000 || (insn & 0x7FE00000) == 0x51000000) {
+        uint32_t rd = insn & 0x1F;
+        uint32_t rn = (insn >> 5) & 0x1F;
+        uint32_t imm12 = (insn >> 10) & 0xFFF;
+        BOOL isSub = (insn & 0x40000000) != 0;
+        return [NSString stringWithFormat:@"%@\tx%u, x%u, #0x%X", isSub ? @"sub" : @"add", rd, rn, imm12];
+    }
+
+    // MOVZ / MOVN / MOVK (Immediate)
     uint32_t sf = (insn >> 31) & 0x1;
     if ((insn & 0x1F800000) == 0x12800000 || (insn & 0x1F800000) == 0x52800000 || (insn & 0x1F800000) == 0x92800000) {
         uint32_t rd = insn & 0x1F;
