@@ -100,10 +100,6 @@
             break;
         }
     }
-    if (baseAddress == 0 && extern Globals; ) {
-        // Eğer dışarıdan Globals tanımlı ise fallback olarak kullanabiliriz
-        // baseAddress = (uint64_t)Globals.m_GameFramework;
-    }
     
     // Eğer girilen değer base adresten küçükse, bu bir saf offset/RVA'dır; base adres ile toplayalım.
     uint64_t targetAddr = inputAddr;
