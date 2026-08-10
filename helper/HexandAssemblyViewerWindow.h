@@ -16,7 +16,7 @@
     if (self) {
         self.backgroundColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:0.4];
         
-        // Ana Konteyner Pencere (Yüksekliği biraz artırdık)
+        // Ana Konteyner Pencere
         self.containerView = [[UIView alloc] initWithFrame:CGRectMake(20, 30, 335, 410)];
         self.containerView.backgroundColor = [UIColor colorWithRed:0.08 green:0.08 blue:0.10 alpha:0.98];
         self.containerView.layer.cornerRadius = 16.0;
@@ -82,17 +82,14 @@
 }
 
 - (NSString *)disassembleARM64Instruction:(uint32_t)insn address:(uint64_t)addr {
-    // Temel ARM64 komut ayrıştırma kalıpları
     if (insn == 0xD65F03C0) return @"ret";
     if (insn == 0xD503201F) return @"nop";
     
-    // RET with pointer auth variants or similar common returns
     if ((insn & 0xFFFFFC1F) == 0xD65F0000) return @"ret";
 
-    // Branch (b / bl)
     if ((insn & 0xFC000000) == 0x14000000) {
         int32_t imm26 = (insn & 0x03FFFFFF);
-        if (imm26 & 0x02000000) imm26 |= 0xFC000000; // sign extend
+        if (imm26 & 0x02000000) imm26 |= 0xFC000000;
         uint64_t target = addr + (imm26 << 2);
         return [NSString stringWithFormat:@"b\t0x%llx", target];
     }
@@ -103,8 +100,6 @@
         return [NSString stringWithFormat:@"bl\t0x%llx", target];
     }
 
-    // MOVZ / MOVN / MOVK (Immediate)
-    uint32_t opc = (insn >> 29) & 0x3;
     uint32_t sf = (insn >> 31) & 0x1;
     if ((insn & 0x1F800000) == 0x12800000 || (insn & 0x1F800000) == 0x52800000 || (insn & 0x1F800000) == 0x92800000) {
         uint32_t rd = insn & 0x1F;
@@ -113,7 +108,6 @@
         return [NSString stringWithFormat:@"mov\t%@%u, #0x%X", regPrefix, rd, imm16];
     }
 
-    // Bilinmeyen / Ham Opcode Gösterimi
     return [NSString stringWithFormat:@".long\t0x%08X", insn];
 }
 
@@ -127,7 +121,6 @@
         return;
     }
     
-    // UnityFramework base adresini bulalım
     uint64_t baseAddress = 0;
     for (uint32_t i = 0; i < _dyld_image_count(); i++) {
         const char *imageName = _dyld_get_image_name(i);
@@ -149,7 +142,6 @@
     uint32_t *intPtr = (uint32_t *)targetAddr;
     
     @try {
-        // --- 1. BÖLÜM: HEX DÜKÜMÜ (8 satır) ---
         [result appendString:@"--- HEX DUMP ---\n"];
         int hexRows = 8;
         int bytesPerRow = 8;
@@ -165,19 +157,17 @@
             [result appendString:@"\n"];
         }
         
-        // --- AYRAÇ ÇİZGİSİ ---
         [result appendString:@"----------------------------------------\n"];
         
-        // --- 2. BÖLÜM: ASSEMBLY DÜKÜMÜ (8 satır / 4'er baytlık komutlar) ---
         [result appendString:@"--- ASSEMBLY (ARM64) ---\n"];
         int asmRows = 8;
         
         for (int i = 0; i < asmRows; i++) {
             uint64_t instAddr = targetAddr + (i * 4);
             uint64_t instRVA = currentRVA + (i * 4);
-            uint32_t opc = intPtr[i];
+            uint32_t opcVal = intPtr[i];
             
-            NSString *disasm = [self disassembleARM64Instruction:opc address:instAddr];
+            NSString *disasm = [self disassembleARM64Instruction:opcVal address:instAddr];
             [result appendFormat:@"%08llX:  %@\n", instRVA, disasm];
         }
         
