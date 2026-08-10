@@ -17,7 +17,7 @@
         self.backgroundColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:0.4];
         
         // Ana Konteyner Pencere
-        self.containerView = [[UIView alloc] initWithFrame:CGRectMake(30, 60, 320, 340)];
+        self.containerView = [[UIView alloc] initWithFrame:CGRectMake(20, 50, 335, 360)];
         self.containerView.backgroundColor = [UIColor colorWithRed:0.08 green:0.08 blue:0.10 alpha:0.98];
         self.containerView.layer.cornerRadius = 16.0;
         self.containerView.layer.borderWidth = 1.5;
@@ -26,14 +26,14 @@
 
         // Başlık
         UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, 10, 230, 30)];
-        titleLabel.text = @"⚙️ Assembly / Memory Viewer";
+        titleLabel.text = @"🔍 Hex Memory Dumper";
         titleLabel.textColor = [UIColor whiteColor];
         titleLabel.font = [UIFont boldSystemFontOfSize:14];
         [self.containerView addSubview:titleLabel];
 
         // Kapat Butonu
         self.closeButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.closeButton.frame = CGRectMake(280, 10, 30, 30);
+        self.closeButton.frame = CGRectMake(295, 10, 30, 30);
         [self.closeButton setTitle:@"✕" forState:UIControlStateNormal];
         [self.closeButton setTitleColor:[UIColor colorWithRed:1.0 green:0.35 blue:0.35 alpha:1.0] forState:UIControlStateNormal];
         self.closeButton.titleLabel.font = [UIFont boldSystemFontOfSize:14];
@@ -41,7 +41,7 @@
         [self.containerView addSubview:self.closeButton];
 
         // Adres Giriş Kutusu
-        self.addressTextField = [[UITextField alloc] initWithFrame:CGRectMake(16, 50, 210, 32)];
+        self.addressTextField = [[UITextField alloc] initWithFrame:CGRectMake(16, 50, 225, 32)];
         self.addressTextField.backgroundColor = [UIColor colorWithRed:0.15 green:0.15 blue:0.18 alpha:1.0];
         self.addressTextField.textColor = [UIColor whiteColor];
         self.addressTextField.font = [UIFont systemFontOfSize:12];
@@ -56,7 +56,7 @@
 
         // Göster Butonu
         self.showButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.showButton.frame = CGRectMake(234, 50, 70, 32);
+        self.showButton.frame = CGRectMake(249, 50, 70, 32);
         self.showButton.backgroundColor = [UIColor colorWithRed:0.20 green:0.60 blue:1.00 alpha:1.0];
         [self.showButton setTitle:@"Göster" forState:UIControlStateNormal];
         [self.showButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
@@ -66,7 +66,7 @@
         [self.containerView addSubview:self.showButton];
 
         // Çıktı Alanı (TextView)
-        self.outputTextView = [[UITextView alloc] initWithFrame:CGRectMake(16, 92, 288, 230)];
+        self.outputTextView = [[UITextView alloc] initWithFrame:CGRectMake(16, 92, 303, 250)];
         self.outputTextView.backgroundColor = [UIColor colorWithRed:0.12 green:0.12 blue:0.15 alpha:1.0];
         self.outputTextView.textColor = [UIColor colorWithRed:0.0 green:0.8 blue:1.0 alpha:1.0];
         self.outputTextView.font = [UIFont fontWithName:@"Courier" size:11] ?: [UIFont systemFontOfSize:11];
@@ -101,22 +101,34 @@
         }
     }
     
-    // Eğer girilen değer base adresten küçükse, bu bir saf offset/RVA'dır; base adres ile toplayalım.
+    // Girilen değer RVA offset ise gerçek belleğe çevirelim
     uint64_t targetAddr = inputAddr;
     if (inputAddr < baseAddress && baseAddress != 0) {
         targetAddr = baseAddress + inputAddr;
     }
     
-    NSMutableString *result = [NSMutableString string];
-    [result appendFormat:@"Base: 0x%llx\nTarget: 0x%llx\n\n", baseAddress, targetAddr];
+    uint64_t currentRVA = (targetAddr >= baseAddress) ? (targetAddr - baseAddress) : targetAddr;
     
-    uint32_t *ptr = (uint32_t *)targetAddr;
+    NSMutableString *result = [NSMutableString string];
+    unsigned char *bytePtr = (unsigned char *)targetAddr;
     
     @try {
-        for (int int_i = 0; int_i < 15; int_i++) {
-            uint64_t currentAddress = targetAddr + (int_i * 4);
-            uint32_t op = ptr[int_i];
-            [result appendFormat:@"0x%llx:  0x%08X\n", currentAddress, op];
+        int numRows = 14;      // Gösterilecek toplam satır sayısı
+        int bytesPerRow = 8;   // Her satırda yan yana 8 bayt
+        
+        for (int row = 0; row < numRows; row++) {
+            uint64_t rowRVA = currentRVA + (row * bytesPerRow);
+            
+            // Satır başı RVA offset (Örn: 0295FE50: )
+            [result appendFormat:@"%08llX  ", rowRVA];
+            
+            // Yan yana baytları yazdıralım
+            for (int b = 0; b < bytesPerRow; b++) {
+                unsigned char val = bytePtr[(row * bytesPerRow) + b];
+                [result appendFormat:@"%02X ", val];
+            }
+            
+            [result appendString:@"\n"];
         }
     } @catch (NSException *exception) {
         [result appendFormat:@"\nHata: Bellek okunamadı (%@)", exception.reason];
