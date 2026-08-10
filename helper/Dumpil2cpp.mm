@@ -489,7 +489,7 @@ void ExecuteIl2CppStringDump(NSString *searchString) {
                 }
             }
             if (!window) {
-                window = [UIApplication sharedApplication].widgets.firstObject; // Güvenli fallback
+                window = [UIApplication sharedApplication].windows.firstObject; // Güvenli fallback
             }
             // Eğer rootViewController bulunamazsa standart metod kullanılır
             UIViewController *rootVC = window ? window.rootViewController : [UIApplication sharedApplication].windows.firstObject.rootViewController;
