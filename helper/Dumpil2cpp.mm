@@ -277,7 +277,7 @@ void ExecuteIl2CppDump() {
     }
 }
 
-// Belirtilen string ifadesine göre filtreleme yaparak dump alan fonksiyon
+// Belirtilen string ifadesine göre filtreleme yaparak tam uyumlu saf offset üreten fonksiyon
 void ExecuteIl2CppStringDump(NSString *searchString) {
     @try {
         if (!Globals.m_GameFramework) {
@@ -296,7 +296,7 @@ void ExecuteIl2CppStringDump(NSString *searchString) {
 
         NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
         NSString *documentsDirectory = [paths firstObject];
-        NSString *fileName = [NSString stringWithFormat:@"AaasecDump-%@.cs", searchString];
+        NSString *fileName = [NSString stringWithFormat:@"AsasecDump-%@.cs", searchString];
         NSString *filePath = [documentsDirectory stringByAppendingPathComponent:fileName];
         
         std::ofstream dumpFile([filePath UTF8String], std::ios::out | std::ios::trunc);
@@ -383,7 +383,6 @@ void ExecuteIl2CppStringDump(NSString *searchString) {
                                             (classNamespace && classNamespace[0] ? "." : "") + 
                                             std::string(className ? className : "Unknown");
 
-                // Sınıf adı eşleşiyor mu kontrol et
                 std::string lowerClassName = fullClassName;
                 std::transform(lowerClassName.begin(), lowerClassName.end(), lowerClassName.begin(), ::tolower);
                 bool classMatches = (lowerClassName.find(targetStr) != std::string::npos);
@@ -402,7 +401,6 @@ void ExecuteIl2CppStringDump(NSString *searchString) {
                     std::string lowerMethodName = mNameStr;
                     std::transform(lowerMethodName.begin(), lowerMethodName.end(), lowerMethodName.begin(), ::tolower);
 
-                    // Metot adı veya sınıf adı eşleşiyorsa ekle
                     if (classMatches || lowerMethodName.find(targetStr) != std::string::npos) {
                         matchedMethods++;
                         methodMatchCount++;
@@ -446,7 +444,9 @@ void ExecuteIl2CppStringDump(NSString *searchString) {
                             }
                         }
 
-                        classBuffer += "    // RVA: 0x" + std::to_string(relativeOffset) + " Offset: 0x" + std::to_string(relativeOffset) + " VA: 0x" + std::to_string(methodPointer) + "\n";
+                        char offsetBuffer[256];
+                        sprintf(offsetBuffer, "    // RVA: 0x%llx Offset: 0x%llx VA: 0x%llx\n", relativeOffset, relativeOffset, methodPointer);
+                        classBuffer += offsetBuffer;
                         classBuffer += "    public " + std::string(returnTypeName) + " " + mNameStr + "(" + paramList + ") { }\n\n";
                     }
                 }
@@ -489,9 +489,8 @@ void ExecuteIl2CppStringDump(NSString *searchString) {
                 }
             }
             if (!window) {
-                window = [UIApplication sharedApplication].windows.firstObject; // Güvenli fallback
+                window = [UIApplication sharedApplication].windows.firstObject;
             }
-            // Eğer rootViewController bulunamazsa standart metod kullanılır
             UIViewController *rootVC = window ? window.rootViewController : [UIApplication sharedApplication].windows.firstObject.rootViewController;
             [rootVC presentViewController:alert animated:YES completion:nil];
         });
