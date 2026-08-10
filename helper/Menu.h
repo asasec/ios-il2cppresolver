@@ -1,14 +1,17 @@
 #import <UIKit/UIKit.h>
 #import <thread>
 
-// Dump fonksiyonunun prototipi (Dump.mm içerisinden çağrılacak)
+// Dump fonksiyonlarının prototipleri
 void ExecuteIl2CppDump(void);
+void ExecuteIl2CppStringDump(NSString *searchString);
 void showNativeAlert(NSString *title, NSString *message);
 
-@interface ImGuiStyleMenuView : UIView
+@interface ImGuiStyleMenuView : UIView <UITextFieldDelegate>
 @property (nonatomic, strong) UIView *mobileMenuWindow;
 @property (nonatomic, strong) UIButton *floatingIcon;
 @property (nonatomic, strong) UIButton *dumpButton;
+@property (nonatomic, strong) UIButton *stringDumpButton;
+@property (nonatomic, strong) UITextField *searchTextField;
 @end
 
 @implementation ImGuiStyleMenuView
@@ -18,7 +21,8 @@ void showNativeAlert(NSString *title, NSString *message);
     if (self) {
         self.backgroundColor = [UIColor clearColor];
         
-        self.mobileMenuWindow = [[UIView alloc] initWithFrame:CGRectMake(50, 80, 270, 110)];
+        // Pencere yüksekliği string dump alanı için büyütüldü (110 -> 160)
+        self.mobileMenuWindow = [[UIView alloc] initWithFrame:CGRectMake(50, 80, 270, 160)];
         self.mobileMenuWindow.backgroundColor = [UIColor colorWithRed:0.08 green:0.08 blue:0.10 alpha:0.97];
         self.mobileMenuWindow.layer.cornerRadius = 16.0;
         self.mobileMenuWindow.layer.borderWidth = 1.5;
@@ -57,15 +61,43 @@ void showNativeAlert(NSString *title, NSString *message);
         [closeBtn addTarget:self action:@selector(minimizeMenu) forControlEvents:UIControlEventTouchUpInside];
         [titleBar addSubview:closeBtn];
 
+        // Full Dump Butonu
         self.dumpButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.dumpButton.frame = CGRectMake(18, 56, 234, 38);
+        self.dumpButton.frame = CGRectMake(18, 48, 234, 32);
         self.dumpButton.backgroundColor = [UIColor colorWithRed:0.20 green:0.60 blue:1.00 alpha:1.0];
         [self.dumpButton setTitle:@"▶ Full Dump" forState:UIControlStateNormal];
         [self.dumpButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-        self.dumpButton.titleLabel.font = [UIFont boldSystemFontOfSize:14];
-        self.dumpButton.layer.cornerRadius = 8.0;
+        self.dumpButton.titleLabel.font = [UIFont boldSystemFontOfSize:13];
+        self.dumpButton.layer.cornerRadius = 6.0;
         [self.dumpButton addTarget:self action:@selector(dumpButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
         [self.mobileMenuWindow addSubview:self.dumpButton];
+
+        // String Arama Kutusu (TextField)
+        self.searchTextField = [[UITextField alloc] initWithFrame:CGRectMake(18, 86, 234, 28)];
+        self.searchTextField.backgroundColor = [UIColor colorWithRed:0.15 green:0.15 blue:0.18 alpha:1.0];
+        self.searchTextField.textColor = [UIColor whiteColor];
+        self.searchTextField.font = [UIFont systemFontOfSize:12];
+        self.searchTextField.layer.cornerRadius = 6.0;
+        self.searchTextField.layer.borderWidth = 1.0;
+        self.searchTextField.layer.borderColor = [UIColor colorWithRed:0.30 green:0.30 blue:0.35 alpha:1.0].CGColor;
+        self.searchTextField.leftView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 8, 28)];
+        self.searchTextField.leftViewMode = UITextFieldViewModeAlways;
+        
+        // Placeholder rengi
+        self.searchTextField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:@"Kelime girin (örn: coin)" attributes:@{NSForegroundColorAttributeName: [UIColor colorWithRed:0.6 green:0.6 blue:0.6 alpha:1.0]}];
+        self.searchTextField.delegate = self;
+        [self.mobileMenuWindow addSubview:self.searchTextField];
+
+        // String Dump Butonu (Full Dump butonunun ve TextField'ın altında)
+        self.stringDumpButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        self.stringDumpButton.frame = CGRectMake(18, 120, 234, 32);
+        self.stringDumpButton.backgroundColor = [UIColor colorWithRed:0.80 green:0.40 blue:0.10 alpha:1.0];
+        [self.stringDumpButton setTitle:@"🔍 String Dump" forState:UIControlStateNormal];
+        [self.stringDumpButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+        self.stringDumpButton.titleLabel.font = [UIFont boldSystemFontOfSize:13];
+        self.stringDumpButton.layer.cornerRadius = 6.0;
+        [self.stringDumpButton addTarget:self action:@selector(stringDumpButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [self.mobileMenuWindow addSubview:self.stringDumpButton];
 
         self.floatingIcon = [UIButton buttonWithType:UIButtonTypeSystem];
         self.floatingIcon.frame = CGRectMake(40, 100, 54, 54);
@@ -125,6 +157,20 @@ void showNativeAlert(NSString *title, NSString *message);
 
 - (void)dumpButtonTapped:(UIButton *)sender {
     std::thread(ExecuteIl2CppDump).detach();
+}
+
+- (void)stringDumpButtonTapped:(UIButton *)sender {
+    [self.searchTextField resignFirstResponder]; // Klavyeyi kapat
+    NSString *query = self.searchTextField.text;
+    std::thread([query]() {
+        ExecuteIl2CppStringDump(query);
+    }).detach();
+}
+
+// Klavyeyi kapatmak için return tuşuna basıldığında tetiklenir
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    [textField resignFirstResponder];
+    return YES;
 }
 
 @end
