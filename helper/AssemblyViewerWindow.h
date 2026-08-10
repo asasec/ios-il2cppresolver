@@ -16,8 +16,8 @@
     if (self) {
         self.backgroundColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:0.4];
         
-        // Ana Konteyner Pencere
-        self.containerView = [[UIView alloc] initWithFrame:CGRectMake(20, 50, 335, 360)];
+        // Ana Konteyner Pencere (Yüksekliği biraz artırdık)
+        self.containerView = [[UIView alloc] initWithFrame:CGRectMake(20, 30, 335, 410)];
         self.containerView.backgroundColor = [UIColor colorWithRed:0.08 green:0.08 blue:0.10 alpha:0.98];
         self.containerView.layer.cornerRadius = 16.0;
         self.containerView.layer.borderWidth = 1.5;
@@ -26,7 +26,7 @@
 
         // Başlık
         UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, 10, 230, 30)];
-        titleLabel.text = @"🔍 Hex Memory Dumper";
+        titleLabel.text = @"🔍 Hex & Assembly Viewer";
         titleLabel.textColor = [UIColor whiteColor];
         titleLabel.font = [UIFont boldSystemFontOfSize:14];
         [self.containerView addSubview:titleLabel];
@@ -66,10 +66,10 @@
         [self.containerView addSubview:self.showButton];
 
         // Çıktı Alanı (TextView)
-        self.outputTextView = [[UITextView alloc] initWithFrame:CGRectMake(16, 92, 303, 250)];
+        self.outputTextView = [[UITextView alloc] initWithFrame:CGRectMake(16, 92, 303, 300)];
         self.outputTextView.backgroundColor = [UIColor colorWithRed:0.12 green:0.12 blue:0.15 alpha:1.0];
         self.outputTextView.textColor = [UIColor colorWithRed:0.0 green:0.8 blue:1.0 alpha:1.0];
-        self.outputTextView.font = [UIFont fontWithName:@"Courier" size:11] ?: [UIFont systemFontOfSize:11];
+        self.outputTextView.font = [UIFont fontWithName:@"Courier" size:10] ?: [UIFont systemFontOfSize:10];
         self.outputTextView.editable = NO;
         self.outputTextView.layer.cornerRadius = 6.0;
         [self.containerView addSubview:self.outputTextView];
@@ -79,6 +79,42 @@
 
 - (void)closeTapped {
     [self removeFromSuperview];
+}
+
+- (NSString *)disassembleARM64Instruction:(uint32_t)insn address:(uint64_t)addr {
+    // Temel ARM64 komut ayrıştırma kalıpları
+    if (insn == 0xD65F03C0) return @"ret";
+    if (insn == 0xD503201F) return @"nop";
+    
+    // RET with pointer auth variants or similar common returns
+    if ((insn & 0xFFFFFC1F) == 0xD65F0000) return @"ret";
+
+    // Branch (b / bl)
+    if ((insn & 0xFC000000) == 0x14000000) {
+        int32_t imm26 = (insn & 0x03FFFFFF);
+        if (imm26 & 0x02000000) imm26 |= 0xFC000000; // sign extend
+        uint64_t target = addr + (imm26 << 2);
+        return [NSString stringWithFormat:@"b\t0x%llx", target];
+    }
+    if ((insn & 0xFC000000) == 0x94000000) {
+        int32_t imm26 = (insn & 0x03FFFFFF);
+        if (imm26 & 0x02000000) imm26 |= 0xFC000000;
+        uint64_t target = addr + (imm26 << 2);
+        return [NSString stringWithFormat:@"bl\t0x%llx", target];
+    }
+
+    // MOVZ / MOVN / MOVK (Immediate)
+    uint32_t opc = (insn >> 29) & 0x3;
+    uint32_t sf = (insn >> 31) & 0x1;
+    if ((insn & 0x1F800000) == 0x12800000 || (insn & 0x1F800000) == 0x52800000 || (insn & 0x1F800000) == 0x92800000) {
+        uint32_t rd = insn & 0x1F;
+        uint32_t imm16 = (insn >> 5) & 0xFFFF;
+        NSString *regPrefix = (sf == 1) ? @"x" : @"w";
+        return [NSString stringWithFormat:@"mov\t%@%u, #0x%X", regPrefix, rd, imm16];
+    }
+
+    // Bilinmeyen / Ham Opcode Gösterimi
+    return [NSString stringWithFormat:@".long\t0x%08X", insn];
 }
 
 - (void)showTapped {
@@ -101,7 +137,6 @@
         }
     }
     
-    // Girilen değer RVA offset ise gerçek belleğe çevirelim
     uint64_t targetAddr = inputAddr;
     if (inputAddr < baseAddress && baseAddress != 0) {
         targetAddr = baseAddress + inputAddr;
@@ -111,25 +146,41 @@
     
     NSMutableString *result = [NSMutableString string];
     unsigned char *bytePtr = (unsigned char *)targetAddr;
+    uint32_t *intPtr = (uint32_t *)targetAddr;
     
     @try {
-        int numRows = 14;      // Gösterilecek toplam satır sayısı
-        int bytesPerRow = 8;   // Her satırda yan yana 8 bayt
+        // --- 1. BÖLÜM: HEX DÜKÜMÜ (8 satır) ---
+        [result appendString:@"--- HEX DUMP ---\n"];
+        int hexRows = 8;
+        int bytesPerRow = 8;
         
-        for (int row = 0; row < numRows; row++) {
+        for (int row = 0; row < hexRows; row++) {
             uint64_t rowRVA = currentRVA + (row * bytesPerRow);
-            
-            // Satır başı RVA offset (Örn: 0295FE50: )
             [result appendFormat:@"%08llX  ", rowRVA];
             
-            // Yan yana baytları yazdıralım
             for (int b = 0; b < bytesPerRow; b++) {
                 unsigned char val = bytePtr[(row * bytesPerRow) + b];
                 [result appendFormat:@"%02X ", val];
             }
-            
             [result appendString:@"\n"];
         }
+        
+        // --- AYRAÇ ÇİZGİSİ ---
+        [result appendString:@"----------------------------------------\n"];
+        
+        // --- 2. BÖLÜM: ASSEMBLY DÜKÜMÜ (8 satır / 4'er baytlık komutlar) ---
+        [result appendString:@"--- ASSEMBLY (ARM64) ---\n"];
+        int asmRows = 8;
+        
+        for (int i = 0; i < asmRows; i++) {
+            uint64_t instAddr = targetAddr + (i * 4);
+            uint64_t instRVA = currentRVA + (i * 4);
+            uint32_t opc = intPtr[i];
+            
+            NSString *disasm = [self disassembleARM64Instruction:opc address:instAddr];
+            [result appendFormat:@"%08llX:  %@\n", instRVA, disasm];
+        }
+        
     } @catch (NSException *exception) {
         [result appendFormat:@"\nHata: Bellek okunamadı (%@)", exception.reason];
     }
