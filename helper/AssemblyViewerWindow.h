@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import <mach-o/dyld.h>
 
 @interface AssemblyViewerWindow : UIView <UITextFieldDelegate>
 @property (nonatomic, strong) UIView *containerView;
@@ -49,7 +50,7 @@
         self.addressTextField.layer.borderColor = [UIColor colorWithRed:0.30 green:0.30 blue:0.35 alpha:1.0].CGColor;
         self.addressTextField.leftView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 8, 32)];
         self.addressTextField.leftViewMode = UITextFieldViewModeAlways;
-        self.addressTextField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:@"Adres (örn: 0x100000000)" attributes:@{NSForegroundColorAttributeName: [UIColor colorWithRed:0.6 green:0.6 blue:0.6 alpha:1.0]}];
+        self.addressTextField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:@"Offset (örn: 0x295fe50)" attributes:@{NSForegroundColorAttributeName: [UIColor colorWithRed:0.6 green:0.6 blue:0.6 alpha:1.0]}];
         self.addressTextField.delegate = self;
         [self.containerView addSubview:self.addressTextField];
 
@@ -82,24 +83,47 @@
 
 - (void)showTapped {
     [self.addressTextField resignFirstResponder];
-    NSString *text = self.addressTextField.text;
-    uint64_t addr = strtoull([text UTF8String], nullptr, 0);
+    NSString *text = [self.addressTextField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    uint64_t inputAddr = strtoull([text UTF8String], nullptr, 0);
     
-    if (addr == 0) {
+    if (inputAddr == 0) {
         self.outputTextView.text = @"Geçersiz veya boş adres girdiniz!";
         return;
     }
     
+    // UnityFramework base adresini bulalım
+    uint64_t baseAddress = 0;
+    for (uint32_t i = 0; i < _dyld_image_count(); i++) {
+        const char *imageName = _dyld_get_image_name(i);
+        if (imageName && strstr(imageName, "UnityFramework")) {
+            baseAddress = (uint64_t)_dyld_get_image_header(i);
+            break;
+        }
+    }
+    if (baseAddress == 0 && extern Globals; ) {
+        // Eğer dışarıdan Globals tanımlı ise fallback olarak kullanabiliriz
+        // baseAddress = (uint64_t)Globals.m_GameFramework;
+    }
+    
+    // Eğer girilen değer base adresten küçükse, bu bir saf offset/RVA'dır; base adres ile toplayalım.
+    uint64_t targetAddr = inputAddr;
+    if (inputAddr < baseAddress && baseAddress != 0) {
+        targetAddr = baseAddress + inputAddr;
+    }
+    
     NSMutableString *result = [NSMutableString string];
-    uint32_t *ptr = (uint32_t *)addr;
+    [result appendFormat:@"Base: 0x%llx\nTarget: 0x%llx\n\n", baseAddress, targetAddr];
+    
+    uint32_t *ptr = (uint32_t *)targetAddr;
     
     @try {
-        for (int i = 0; i < 15; i++) {
-            uint32_t op = ptr[i];
-            [result appendFormat:@"0x%llx:  0x%08X\n", (addr + (i * 4)), op];
+        for (int int_i = 0; int_i < 15; int_i++) {
+            uint64_t currentAddress = targetAddr + (int_i * 4);
+            uint32_t op = ptr[int_i];
+            [result appendFormat:@"0x%llx:  0x%08X\n", currentAddress, op];
         }
     } @catch (NSException *exception) {
-        [result appendString:@"\nHata: Bellek okunamadı (Segmentation Fault / Korumalı Alan)"];
+        [result appendFormat:@"\nHata: Bellek okunamadı (%@)", exception.reason];
     }
     
     self.outputTextView.text = result;
