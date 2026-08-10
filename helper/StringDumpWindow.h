@@ -1,7 +1,9 @@
 #import <UIKit/UIKit.h>
 #import <thread>
+#import <mach-o/dyld.h>
+#import <mach-o/loader.h>
 
-// Dump fonksiyonunun prototipi
+// Dump fonksiyonunun prototipi (Saf offset hesaplamalı)
 void ExecuteIl2CppStringDump(NSString *searchString);
 
 @interface StringDumpWindow : UIView <UITextFieldDelegate>
