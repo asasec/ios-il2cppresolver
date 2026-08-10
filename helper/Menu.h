@@ -1,28 +1,30 @@
 #import <UIKit/UIKit.h>
 #import <thread>
+#import "AssemblyViewerWindow.h"
 
 // Dump fonksiyonlarının prototipleri
 void ExecuteIl2CppDump(void);
 void ExecuteIl2CppStringDump(NSString *searchString);
 void showNativeAlert(NSString *title, NSString *message);
 
-@interface ImGuiStyleMenuView : UIView <UITextFieldDelegate>
+@interface NativeMenuView : UIView <UITextFieldDelegate>
 @property (nonatomic, strong) UIView *mobileMenuWindow;
 @property (nonatomic, strong) UIButton *floatingIcon;
 @property (nonatomic, strong) UIButton *dumpButton;
 @property (nonatomic, strong) UIButton *stringDumpButton;
+@property (nonatomic, strong) UIButton *assemblyViewerButton;
 @property (nonatomic, strong) UITextField *searchTextField;
 @end
 
-@implementation ImGuiStyleMenuView
+@implementation NativeMenuView
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
         self.backgroundColor = [UIColor clearColor];
         
-        // Pencere yüksekliği string dump alanı için büyütüldü (110 -> 160)
-        self.mobileMenuWindow = [[UIView alloc] initWithFrame:CGRectMake(50, 80, 270, 160)];
+        // Pencere yüksekliği yeni buton sığacak şekilde ayarlandı (200)
+        self.mobileMenuWindow = [[UIView alloc] initWithFrame:CGRectMake(50, 80, 270, 200)];
         self.mobileMenuWindow.backgroundColor = [UIColor colorWithRed:0.08 green:0.08 blue:0.10 alpha:0.97];
         self.mobileMenuWindow.layer.cornerRadius = 16.0;
         self.mobileMenuWindow.layer.borderWidth = 1.5;
@@ -82,13 +84,11 @@ void showNativeAlert(NSString *title, NSString *message);
         self.searchTextField.layer.borderColor = [UIColor colorWithRed:0.30 green:0.30 blue:0.35 alpha:1.0].CGColor;
         self.searchTextField.leftView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 8, 28)];
         self.searchTextField.leftViewMode = UITextFieldViewModeAlways;
-        
-        // Placeholder rengi
         self.searchTextField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:@"Kelime girin (örn: coin)" attributes:@{NSForegroundColorAttributeName: [UIColor colorWithRed:0.6 green:0.6 blue:0.6 alpha:1.0]}];
         self.searchTextField.delegate = self;
         [self.mobileMenuWindow addSubview:self.searchTextField];
 
-        // String Dump Butonu (Full Dump butonunun ve TextField'ın altında)
+        // String Dump Butonu
         self.stringDumpButton = [UIButton buttonWithType:UIButtonTypeSystem];
         self.stringDumpButton.frame = CGRectMake(18, 120, 234, 32);
         self.stringDumpButton.backgroundColor = [UIColor colorWithRed:0.80 green:0.40 blue:0.10 alpha:1.0];
@@ -99,6 +99,18 @@ void showNativeAlert(NSString *title, NSString *message);
         [self.stringDumpButton addTarget:self action:@selector(stringDumpButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
         [self.mobileMenuWindow addSubview:self.stringDumpButton];
 
+        // Assembly Viewer Butonu
+        self.assemblyViewerButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        self.assemblyViewerButton.frame = CGRectMake(18, 158, 234, 32);
+        self.assemblyViewerButton.backgroundColor = [UIColor colorWithRed:0.30 green:0.50 blue:0.30 alpha:1.0];
+        [self.assemblyViewerButton setTitle:@"⚙️ Assembly Viewer" forState:UIControlStateNormal];
+        [self.assemblyViewerButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+        self.assemblyViewerButton.titleLabel.font = [UIFont boldSystemFontOfSize:13];
+        self.assemblyViewerButton.layer.cornerRadius = 6.0;
+        [self.assemblyViewerButton addTarget:self action:@selector(assemblyViewerButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [self.mobileMenuWindow addSubview:self.assemblyViewerButton];
+
+        // Yüzen Simge (Floating Icon)
         self.floatingIcon = [UIButton buttonWithType:UIButtonTypeSystem];
         self.floatingIcon.frame = CGRectMake(40, 100, 54, 54);
         self.floatingIcon.backgroundColor = [UIColor colorWithRed:0.10 green:0.10 blue:0.13 alpha:0.92];
@@ -160,14 +172,19 @@ void showNativeAlert(NSString *title, NSString *message);
 }
 
 - (void)stringDumpButtonTapped:(UIButton *)sender {
-    [self.searchTextField resignFirstResponder]; // Klavyeyi kapat
+    [self.searchTextField resignFirstResponder];
     NSString *query = self.searchTextField.text;
     std::thread([query]() {
         ExecuteIl2CppStringDump(query);
     }).detach();
 }
 
-// Klavyeyi kapatmak için return tuşuna basıldığında tetiklenir
+- (void)assemblyViewerButtonTapped:(UIButton *)sender {
+    UIWindow *keyWindow = [UIApplication sharedApplication].windows.firstObject;
+    AssemblyViewerWindow *asmWindow = [[AssemblyViewerWindow alloc] initWithFrame:keyWindow.bounds];
+    [keyWindow addSubview:asmWindow];
+}
+
 - (BOOL)textFieldShouldReturn:(UITextField *)textField {
     [textField resignFirstResponder];
     return YES;
